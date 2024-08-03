@@ -37,7 +37,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_path', type=str, default='datasets/PSM')
     parser.add_argument('--model_save_path', type=str, default='checkpoints')
     parser.add_argument('--anomaly_ratio', type=float, default=1)
-    parser.add_argument('--T', type=int, default=250)
+    parser.add_argument('--T', type=int, default=150)
     parser.add_argument('--beta_0', type=float, default=0.0001)
     parser.add_argument('--beta_T', type=float, default=0.05)
     config = parser.parse_args()

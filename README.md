@@ -29,7 +29,7 @@ https://drive.google.com/drive/folders/1LUNotax6LGdFOlyThEJp7oCNN2fqNUNt?usp=sha
 
 ## Usage
 
-To reproduce the results mentioned in our paper, we provide a complete command for training and testing DDTM:
+To reproduce the results mentioned in our paper, we provide a complete command for training and testing DeAnomaly:
 
 ```
 python main.py --num_epochs <num_epochs> --batch_size <batch_size> --mode <mode> --dataset <dataset> --data_path <data_path> --input_c <input_c> --output_c <output_c>

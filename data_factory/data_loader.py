@@ -105,9 +105,6 @@ class MSLSegLoader(object):
                 self.test_labels[index // self.step * self.win_size:index // self.step * self.win_size + self.win_size])
 
 
-
-
-
 class SMAPSegLoader(object):
     def __init__(self, data_path, win_size, step, mode="train"):
         self.mode = mode
@@ -205,13 +202,13 @@ class SWATSegLoader(Dataset):
 
 def get_loader_segment(data_path, batch_size, win_size=100, step=100, mode='train', dataset='PSM'):
     if (dataset == 'PSM'):
-        dataset = PSMSegLoader(data_path, win_size, 1, mode)
+        dataset = PSMSegLoader(data_path, win_size, step, mode)
     elif (dataset == 'SWaT'):
-        dataset = SWATSegLoader(data_path, win_size, 1, mode)
+        dataset = SWATSegLoader(data_path, win_size, step, mode)
     elif (dataset == 'MSL'):
-        dataset = MSLSegLoader(data_path, win_size, 1, mode)
+        dataset = MSLSegLoader(data_path, win_size, step, mode)
     elif (dataset == 'SMAP'):
-        dataset = SMAPSegLoader(data_path, win_size, 1, mode)
+        dataset = SMAPSegLoader(data_path, win_size, step, mode)
 
     shuffle = False
     if mode == 'train':

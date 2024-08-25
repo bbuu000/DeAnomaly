@@ -98,8 +98,7 @@ class Solver(object):
         self.pre_model = TS_Model(seq_len=self.win_size, num_nodes=self.input_c, d_model=128)
         self.model = AD_Model(enc_in=self.input_c, c_out=self.output_c)
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr, momentum=0.9)
-        self.preoptimizer = torch.optim.SGD(self.pre_model.parameters(), lr=self.lr, momentum=0.9) # PSM：lr=1e-2
-        # self.preoptimizer = torch.optim.Adam(self.pre_model.parameters(), lr=self.lr)
+        self.preoptimizer = torch.optim.SGD(self.pre_model.parameters(), lr=self.lr, momentum=0.9)
         self.scheduler = lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=100)
         self.prescheduler = lr_scheduler.CosineAnnealingLR(self.preoptimizer, T_max=100)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -112,7 +111,7 @@ class Solver(object):
         self.pre_model.eval()
         loss2_list = []
         for i, (input_data, _) in enumerate(vali_loader):
-            trend, seasonal, residual = self.decompose(input_data)  # [batch_size, window_size, dimensions]
+            trend, seasonal, residual = self.decompose(input_data)
             normal = trend + seasonal
 
             input = normal.float().to(self.device)
@@ -132,7 +131,7 @@ class Solver(object):
         loss2_list = []
         diffusion_hyperparams = calc_diffusion_hyperparams(self.T, self.beta_0, self.beta_T)
         for i, (input_data, _) in enumerate(vali_loader):
-            trend, seasonal, residual = self.decompose(input_data)  # [batch_size, window_size, dimensions]
+            trend, seasonal, residual = self.decompose(input_data)
             normal = trend + seasonal
             normal_update = self.pre_model(normal.to(self.device))
             residual = input_data.to(self.device) - normal_update
@@ -181,10 +180,8 @@ class Solver(object):
 
             epoch_time = datetime.now()
             self.pre_model.train()
-            # input_data: [batch_size, window_size, dimensions]
-            # labels: [batch_size, window_size]
             for i, (input_data, labels) in enumerate(self.train_loader):
-                trend, seasonal, residual = self.decompose(input_data)  # [batch_size, window_size, dimensions]
+                trend, seasonal, residual = self.decompose(input_data)
                 normal = trend + seasonal
 
                 self.preoptimizer.zero_grad()
@@ -207,7 +204,7 @@ class Solver(object):
             self.prescheduler.step()
 
             print("Epoch: {} cost time: {}".format(epoch + 1, datetime.now() - epoch_time))
-            train_loss = np.average(loss1_list)     # 求平均
+            train_loss = np.average(loss1_list)
             val_loss = self.vali_premodel(self.test_loader)
             print(
                 "Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} ".format(
@@ -228,14 +225,12 @@ class Solver(object):
             self.pre_model.load_state_dict(
                 torch.load(os.path.join(str(self.model_save_path), str(self.dataset) + '_premodel_checkpoint.pth')))
             self.model.train()
-            # input_data: [batch_size, window_size, dimensions]
-            # labels: [batch_size, window_size]
             for i, (input_data, labels) in enumerate(self.train_loader):
-                trend, seasonal, residual = self.decompose(input_data)  # [batch_size, window_size, dimensions]
+                trend, seasonal, residual = self.decompose(input_data)
                 normal = trend + seasonal
                 normal_update = self.pre_model(normal.to(self.device))
                 residual = input_data.to(self.device) - normal_update
-                residual = residual.permute(0, 2, 1) # [batch_size, dimensions, window_size]
+                residual = residual.permute(0, 2, 1)
 
                 self.optimizer.zero_grad()
                 iter_count += 1
@@ -246,12 +241,12 @@ class Solver(object):
                 B, C, L = series.shape
                 mask_matrix = generate_mask_for_timeseries(series)
                 series = series * mask_matrix
-                diffusion_steps = torch.randint(T, size=(B, 1, 1)).to(self.device) # [batch_size, 1, 1] 值是从0到 (T-1) 之间的随机整数
-                z = std_normal(series.shape).to(self.device)   # [batch_size, dimensions, window_size] 加入的噪声，维度与原序列相同，值是从标准正态分布中随机生成的。
-                x_t = torch.sqrt(Alpha_bar[diffusion_steps]) * series + torch.sqrt(   # batch_size中的每一个多变量时间序列扩散的步长都不一样，此处就是计算前向过程扩散之后的多变量时间序列
+                diffusion_steps = torch.randint(T, size=(B, 1, 1)).to(self.device)
+                z = std_normal(series.shape).to(self.device)
+                x_t = torch.sqrt(Alpha_bar[diffusion_steps]) * series + torch.sqrt(
                     1 - Alpha_bar[diffusion_steps]) * z
 
-                epsilon_theta1, epsilon_theta2 = self.model((x_t, mask_matrix, diffusion_steps.view(B, 1),))   # [batch_size, dimensions, window_size]  预测的噪声（输入中必须有噪声序列和位置编码即时刻数）
+                epsilon_theta1, epsilon_theta2 = self.model((x_t, mask_matrix, diffusion_steps.view(B, 1),))
 
                 loss = (1 / n) * self.criterion(epsilon_theta1, z) + (1 - 1/n) * self.criterion(epsilon_theta2, z)
                 loss1_list.append(loss.item())
@@ -268,7 +263,7 @@ class Solver(object):
             self.scheduler.step()
 
             print("Epoch: {} cost time: {}".format(epoch + 1, datetime.now() - epoch_time))
-            train_loss = np.average(loss1_list)     # 求平均
+            train_loss = np.average(loss1_list)
             val_loss = self.vali_model(self.test_loader)
             print(
                 "Epoch: {0}, Steps: {1} | Train Loss: {2:.7f} Vali Loss: {3:.7f} ".format(
@@ -296,7 +291,7 @@ class Solver(object):
         attens_energy = []
         diffusion_hyperparams = calc_diffusion_hyperparams(self.T, self.beta_0, self.beta_T)
         for i, (input_data, labels) in enumerate(self.thre_loader):
-            trend, seasonal, residual = self.decompose(input_data)  # [batch_size, window_size, dimensions]
+            trend, seasonal, residual = self.decompose(input_data)
             normal = trend + seasonal
             normal_update = self.pre_model(normal.to(self.device))
             residual = input_data.to(self.device) - normal_update
@@ -312,7 +307,6 @@ class Solver(object):
             x = std_normal(size).to(self.device)
             mask_matrix = torch.ones_like(input)
             with torch.no_grad():
-                # 反向过程
                 for t in range(T - 1, -1, -1):
                     diffusion_steps = (t * torch.ones((size[0], 1))).to(self.device)
                     epsilon_theta1, epsilon_theta2  = self.model((x, mask_matrix, diffusion_steps,))
@@ -320,8 +314,8 @@ class Solver(object):
                     if t > 0:
                         x = mean + Sigma[t] * std_normal(size).to(self.device)
 
-            output = x  # [batch_size, dimensions, window_size]  从随机噪声逐步降噪得到的时间序列
-            loss = torch.mean(criterion(input, output), dim=1)  # [batch_size, window_size]
+            output = x
+            loss = torch.mean(criterion(input, output), dim=1)
             cri = loss
             cri = cri.detach().cpu().numpy()
             attens_energy.append(cri)
@@ -329,7 +323,7 @@ class Solver(object):
         attens_energy = np.concatenate(attens_energy, axis=0).reshape(-1)
         thre_energy = np.array(attens_energy)
 
-        thresh = np.percentile(thre_energy, 100 - self.anomaly_ratio)  # 阈值
+        thresh = np.percentile(thre_energy, 100 - self.anomaly_ratio)
         end_time1 = datetime.now()
         time1 = end_time1 - start_time1
         print("dataset:", self.dataset)
@@ -344,7 +338,7 @@ class Solver(object):
             test_labels = []
             attens_energy = []
             for i, (input_data, labels) in enumerate(self.thre_loader):
-                trend, seasonal, residual = self.decompose(input_data)  # [batch_size, window_size, dimensions]
+                trend, seasonal, residual = self.decompose(input_data)
                 normal = trend + seasonal
                 normal_update = self.pre_model(normal.to(self.device))
                 residual = input_data.to(self.device) - normal_update

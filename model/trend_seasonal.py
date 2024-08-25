@@ -4,8 +4,6 @@ import torch
 from layers.Attention import FourierAttention, TemporalAttention
 
 
-
-
 class TS_Model(nn.Module):
     """
     normal pattern learning

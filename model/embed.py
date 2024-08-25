@@ -6,7 +6,6 @@ import math
 class PositionalEmbedding(nn.Module):
     def __init__(self, d_model, max_len=5000):
         super(PositionalEmbedding, self).__init__()
-        # Compute the positional encodings once in log space.
         pe = torch.zeros(max_len, d_model).float()
         pe.require_grad = False
 
@@ -47,7 +46,6 @@ class DataEmbedding(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
 
     def forward(self, x):
-        # x = self.value_embedding(x) + self.position_embedding(x) + self.t_embedding
         x = self.value_embedding(x) + self.position_embedding(x)
         x = self.dropout(x)
         return x

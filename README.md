@@ -1,6 +1,14 @@
 # DeAnomaly: Multivariate Time Series Anomaly Detection with Decomposition and Diffusion
 
-**Abstract:** Multivariate time seris anomaly detection (MTS-AD) is of great significance in various modern industrial applications and IT systems. Recently, some unsupervised deep models have been developed for MTS-AD. However, these methods often struggle to handle the complex temporal patterns and inevitable noise in multivariate time series (MTS) data, resulting in limited performance. To overcome these challenges, we propose DeAnomaly, a novel anomaly detection framework based on time series decomposition. DeAnomaly employs a two-phase training paradigm, consisting of structural pattern elimination and anomaly detection on remainders. The structural pattern elimination phase learns normal trend and seasonal components through spatial relationship modeling and time-frequency analysis, which are subsequently removed from the original time series to overcome the limitation of complex temporal patterns. The anomaly detection phase employs a denoising diffusion model to identify various anomalies in the remainders, addressing noise interference effectively. Since anomalies and small random fluctuations are mainly retained in the remainders, anomalies will be more clearly exposed. In this way, DeAnomaly can detect anomalies more accurately and robustly. We conduct extensive experiments on four real-world datasets and eleven baselines, experimental results demonstrate that DeAnomaly outperforms these state-of-the-arts.
+**Abstract:** Multivariate time seris anomaly detection (MTS-AD) is of great significance in various modern industrial applications and IT systems.
+Recently, some unsupervised deep models have been developed for MTS-AD.
+However, these methods often struggle to handle the complex temporal patterns and inevitable noise in multivariate time series (MTS) data, resulting in limited performance.
+To overcome these challenges, we propose DeAnomaly, a novel anomaly detection framework based on time series decomposition.
+DeAnomaly employs a two-phase training paradigm, consisting of structural pattern elimination and anomaly detection on remainders.
+The structural pattern elimination phase learns normal trend and seasonal components through spatial relationship modeling and time-frequency analysis, which are subsequently removed from the original time series to overcome the limitation of complex temporal patterns.
+The anomaly detection phase utilizes the robust characteristics of noise with denoising diffusion models to identify and distinguish between noise and actual anomalies.
+Since anomalies and small random fluctuations are mainly retained in the remainders, anomalies will be more clearly exposed. In this way, DeAnomaly can detect anomalies more accurately and robustly.
+We conduct extensive experiments on four real-world datasets and eleven baselines, experimental results demonstrate that DeAnomaly outperforms these state-of-the-arts. 
 
 ## Requirements
 

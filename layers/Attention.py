@@ -10,7 +10,7 @@ class TriangularCausalMask():
     @property
     def mask(self):
         return self._mask
-
+''
 
 """
 Temporal Attention

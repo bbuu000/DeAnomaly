@@ -8,7 +8,7 @@ from data_factory.data_loader import get_loader_segment
 from utils.utils import calc_diffusion_hyperparams, std_normal
 from model.trend_seasonal import TS_Model
 from model.series_decompose import tsr_decomp
-from layers.random_mask import generate_mask_for_timeseries
+from layers.three_sigma_mask import generate_mask_for_timeseries
 
 def my_kl_loss(p, q):
     res = p * (torch.log(p + 0.0001) - torch.log(q + 0.0001))

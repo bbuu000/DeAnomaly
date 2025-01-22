@@ -20,8 +20,8 @@ class TS_Model(nn.Module):
         self.encoder = Encoder(
             [
                 EncoderLayer(
-                    AttentionLayer1(temporalAttention, d_model=d_model // 2, guidance_num=25),
-                    AttentionLayer2(frequencyAttention, d_model=d_model // 2, guidance_num=25),
+                    AttentionLayer1(temporalAttention, d_model=d_model, guidance_num=25),
+                    AttentionLayer2(frequencyAttention, d_model=d_model, guidance_num=25),
                     d_model=d_model,
                     dropout=0.1,
                     seq_len=seq_len,

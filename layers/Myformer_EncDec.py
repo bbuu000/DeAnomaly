@@ -105,35 +105,12 @@ class EncoderLayer(nn.Module):
 
         self.linear1 = nn.Linear(num_nodes, d_model)
         self.linear2 = nn.Linear(seq_len * 2, seq_len)
-        self.linear3 = nn.Linear(seq_len * 2, seq_len)
 
-        self.conv1 = nn.Conv1d(in_channels=d_model // 2, out_channels=d_model // 2, kernel_size=(1,))
-        self.conv2 = nn.Conv1d(in_channels=d_model, out_channels=d_model * 2, kernel_size=(1,))
-        self.conv3 = nn.Conv1d(in_channels=d_model * 2, out_channels=d_model, kernel_size=(1,))
-        nn.init.kaiming_normal_(self.conv1.weight, mode="fan_in", nonlinearity="leaky_relu")
-        nn.init.kaiming_normal_(self.conv2.weight, mode="fan_in", nonlinearity="leaky_relu")
-        nn.init.kaiming_normal_(self.conv3.weight, mode="fan_in", nonlinearity="leaky_relu")
-        self.activation1 = nn.SELU()
-        self.activation2 = F.gelu
         self.dropout1 = nn.Dropout(dropout)
         self.dropout2 = nn.Dropout(dropout)
-        self.norm1 = nn.LayerNorm(d_model // 2)
+        self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
-        self.norm3 = nn.LayerNorm(d_model)
 
-        self.conv4 = nn.Conv1d(in_channels=d_model // 2, out_channels=d_model // 2, kernel_size=(1,))
-        self.conv5 = nn.Conv1d(in_channels=d_model, out_channels=d_model * 2, kernel_size=(1,))
-        self.conv6 = nn.Conv1d(in_channels=d_model * 2, out_channels=d_model, kernel_size=(1,))
-        nn.init.kaiming_normal_(self.conv4.weight, mode="fan_in", nonlinearity="leaky_relu")
-        nn.init.kaiming_normal_(self.conv5.weight, mode="fan_in", nonlinearity="leaky_relu")
-        nn.init.kaiming_normal_(self.conv6.weight, mode="fan_in", nonlinearity="leaky_relu")
-        self.activation3 = nn.SELU()
-        self.activation4 = F.gelu
-        self.dropout3 = nn.Dropout(dropout)
-        self.dropout4 = nn.Dropout(dropout)
-        self.norm4 = nn.LayerNorm(d_model // 2)
-        self.norm5 = nn.LayerNorm(d_model)
-        self.norm6 = nn.LayerNorm(d_model)
 
     def forward(self, x, attn_mask=None):
         x = self.feature_gat(x)
@@ -141,55 +118,31 @@ class EncoderLayer(nn.Module):
 
         x += self.embedding(x)
 
-        # 时间域拆成两分支
-        temporal_split_x = torch.split(x, x.shape[2] // 2, dim=2)
-        # 频率域拆成两分支
-        frequency_split_x = x.permute(0, 2, 1)
-        frequency_fft_split_x = torch.fft.fft(frequency_split_x, dim=-1, norm='forward')
-        frequency_split_x = torch.cat((frequency_fft_split_x.real, frequency_fft_split_x.imag), -3)
-        frequency_split_x = torch.reshape(frequency_split_x.permute(1, 2, 0), [frequency_fft_split_x.shape[-3], frequency_fft_split_x.shape[-2], -1])
-        frequency_split_x = frequency_split_x.permute(0, 2, 1)
-        frequency_split_x =  torch.split(frequency_split_x, frequency_split_x.shape[2] // 2, dim=2)
+        temporal_x = x
+
+        frequency_x = x.permute(0, 2, 1)
+        frequency_fft_x = torch.fft.fft(frequency_x, dim=-1, norm='forward')
+        frequency_x = torch.cat((frequency_fft_x.real, frequency_fft_x.imag), -3)
+        frequency_x = torch.reshape(frequency_x.permute(1, 2, 0), [frequency_fft_x.shape[-3], frequency_fft_x.shape[-2], -1])
+        frequency_x = frequency_x.permute(0, 2, 1)
+        frequency_x = self.linear2(frequency_x.permute(0, 2, 1)).permute(0, 2, 1)
 
 
-        temporal_global_x = temporal_split_x[1].clone()
-        temporal_local_x = temporal_split_x[0].clone()
-        frequency_global_x = frequency_split_x[1].clone()
-        frequency_local_x = frequency_split_x[0].clone()
-        frequency_global_x = self.linear2(frequency_global_x.permute(0, 2, 1)).permute(0, 2, 1)
-        frequency_local_x = self.linear3(frequency_local_x.permute(0, 2, 1)).permute(0, 2, 1)
-
-
-        temporal_local_x = self.conv1(temporal_local_x.permute(0, 2, 1))
-        temporal_local_x = self.activation1(temporal_local_x)
-        temporal_local_x = temporal_local_x.transpose(1, 2)
         new_x, attn = self.temporal_attention(
-            temporal_global_x, temporal_global_x, temporal_global_x, frequency_global_x,
+            temporal_x, temporal_x, temporal_x, frequency_x,
             attn_mask=attn_mask
         )
-        temporal_x = temporal_global_x + self.dropout1(new_x)
-        temporal_out = self.norm1(temporal_x)
-        temporal_cat = self.norm2(torch.cat((temporal_local_x, temporal_out), 2))
-        residual = x.clone()
-        temporal_recons = self.activation2(self.conv2(temporal_cat.permute(0, 2, 1)))
-        temporal_recons = self.dropout2(self.conv3(temporal_recons).permute(0, 2, 1))
-        temporal_recons = self.norm3(temporal_recons + residual)
+        temporal_x = temporal_x + self.dropout1(new_x)
+        temporal_recons = self.norm1(temporal_x)
 
 
-        frequency_local_x = self.conv4(frequency_local_x.permute(0, 2, 1))
-        frequency_local_x = self.activation3(frequency_local_x)
-        frequency_local_x = frequency_local_x.transpose(1, 2)
         new_x, attn = self.frequency_attention(
-            frequency_global_x, frequency_global_x, frequency_global_x, temporal_global_x,
+            frequency_x, frequency_x, frequency_x, temporal_x,
             attn_mask=attn_mask
         )
-        frequency_x = frequency_global_x + self.dropout3(new_x)
-        frequency_out = self.norm4(frequency_x)
-        frequency_cat = self.norm5(torch.cat((frequency_local_x, frequency_out), 2))
-        residual = x.clone()
-        frequency_recons = self.activation4(self.conv5(frequency_cat.permute(0, 2, 1)))
-        frequency_recons = self.dropout4(self.conv6(frequency_recons).permute(0, 2, 1))
-        frequency_recons = self.norm6(frequency_recons + residual)
+        frequency_x = frequency_x + self.dropout2(new_x)
+        frequency_recons = self.norm2(frequency_x)
+
 
         return temporal_recons, frequency_recons, attn
 

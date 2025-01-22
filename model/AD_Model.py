@@ -15,40 +15,20 @@ class EncoderLayer(nn.Module):
     def __init__(self, attention, d_model, dropout=0.1):
         super(EncoderLayer, self).__init__()
         self.attention = attention
-        self.conv = nn.Conv1d(in_channels=d_model // 2, out_channels=d_model // 2, kernel_size=(1,))
-        nn.init.kaiming_normal_(self.conv.weight, mode="fan_in", nonlinearity="leaky_relu")
-        self.norm1 = nn.LayerNorm(d_model // 2)
-        self.norm2 = nn.LayerNorm(d_model)
+        self.norm1 = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(dropout)
-        self.activation = nn.SELU()
-
-        self.conv1 = nn.Conv1d(in_channels=d_model, out_channels=d_model * 2, kernel_size=(1,))
-        self.conv2 = nn.Conv1d(in_channels=d_model * 2, out_channels=d_model, kernel_size=(1,))
-        nn.init.kaiming_normal_(self.conv1.weight, mode="fan_in", nonlinearity="leaky_relu")
-        nn.init.kaiming_normal_(self.conv2.weight, mode="fan_in", nonlinearity="leaky_relu")
-        self.activation2 = F.gelu
 
 
     def forward(self, x, attn_mask=None):
-        split_x = torch.split(x, x.shape[2] // 2, dim=2)
-        csp_x = split_x[1].clone()
-        norm_x = split_x[0].clone()
-        norm_x = self.conv(norm_x.permute(0, 2, 1))
-        norm_x = self.activation(norm_x)
-        norm_x = norm_x.transpose(1, 2)
+        csp_x = x.clone()
         new_x = self.attention(
             csp_x, csp_x, csp_x,
             attn_mask=attn_mask
         )
         csp_x = csp_x + self.dropout(new_x)
         csp_x = self.norm1(csp_x)
-        x_cat = torch.cat((csp_x, norm_x), 2)
-        residual = x.clone()
-        y = self.activation2(self.conv1(x_cat.permute(0, 2, 1)))
-        y = self.dropout(self.conv2(y).permute(0, 2, 1))
-        y = self.norm2(y + residual)
 
-        return y
+        return csp_x
 
 
 class Encoder(nn.Module):
@@ -81,7 +61,7 @@ class AD_Model(nn.Module):
             [
                 EncoderLayer(
                     AttentionLayer(NMA(attention_dropout=dropout, output_attention=output_attention),
-                        d_model//2, n_heads),
+                        d_model, n_heads),
                     d_model,
                     dropout=dropout
                 )
